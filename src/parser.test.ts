@@ -22,6 +22,21 @@ describe("parseTransactionInput", () => {
     });
   });
 
+  it("accepts Kirim at the beginning or end", () => {
+    expect(parseTransactionInput("Kirim salary 2 000")).toEqual({
+      amount: 2000,
+      currency: "UZS",
+      note: "salary",
+      type: "income",
+    });
+    expect(parseTransactionInput("Salary kirim 2 000")).toEqual({
+      amount: 2000,
+      currency: "UZS",
+      note: "Salary",
+      type: "income",
+    });
+  });
+
   it("kartoshka, sabzi, piyoz jami 60 000", () => {
     expect(parseTransactionInput("kartoshka, sabzi, piyoz jami 60 000")).toEqual({
       amount: -60000,
@@ -87,7 +102,7 @@ describe("format helpers", () => {
 
   it("formats recorded confirmation", () => {
     expect(formatRecorded("Ali", -15000, "UZS", "Kartoshka 3kg")).toBe(
-      "✅ Recorded for Ali: -15 000 UZS (Kartoshka 3kg)",
+      "✓ -15 000 UZS",
     );
   });
 
