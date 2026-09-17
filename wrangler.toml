@@ -13,6 +13,3 @@ migrations_dir = "migrations"
 #   wrangler secret put WEBHOOK_SECRET
 # Local development: copy .dev.vars.example to .dev.vars
 
-[vars]
-BOT_TOKEN = "8702182706:AAGB1AeEuO27vj17gAXiNjgcZ0yLhhtb_BQ"
-WEBHOOK_SECRET = "long-generative-string"
