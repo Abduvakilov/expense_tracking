@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasFinancialIntent, parseTransactionInput } from "./parser";
+import { hasFinancialIntent, parseTransactionInput, parseTransactionInputs } from "./parser";
 import { formatAmount, formatBalanceReport, formatRecorded } from "./format";
 import { parseCommand } from "./telegram";
 
@@ -61,6 +61,13 @@ describe("parseTransactionInput", () => {
   it("returns null without a number", () => {
     expect(parseTransactionInput("kirim today")).toBeNull();
     expect(parseTransactionInput("hello everyone")).toBeNull();
+  });
+
+  it("parses multiple newline-separated transactions", () => {
+    expect(parseTransactionInputs("Taxi 25$\nKartoshka 15 000")).toEqual([
+      { amount: -25, currency: "USD", note: "Taxi", type: "expense" },
+      { amount: -15000, currency: "UZS", note: "Kartoshka", type: "expense" },
+    ]);
   });
 });
 

@@ -1,14 +1,18 @@
-name = "expense-tracking-bot"
+name = "expense-tracking"
 main = "src/index.ts"
 compatibility_date = "2026-09-17"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "expense-tracking"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "45d61869-25a9-41b7-9867-f181b5e4bfc1"
 migrations_dir = "migrations"
 
 # Set secrets with:
 #   wrangler secret put BOT_TOKEN
 #   wrangler secret put WEBHOOK_SECRET
 # Local development: copy .dev.vars.example to .dev.vars
+
+[vars]
+BOT_TOKEN = "8702182706:AAGB1AeEuO27vj17gAXiNjgcZ0yLhhtb_BQ"
+WEBHOOK_SECRET = "long-generative-string"

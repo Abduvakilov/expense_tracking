@@ -24,7 +24,7 @@ function groupThousands(value: number, separator: string): string {
 }
 
 export function formatRecorded(name: string, amount: number, currency: Currency, note: string): string {
-  return `✅ Recorded for ${name}: ${formatAmount(amount, currency)} ${currency} (${note})`;
+  return `✓ ${formatAmount(amount, currency)} ${currency}`;
 }
 
 export const HELP_TEXT = `Expense tracker

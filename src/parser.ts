@@ -44,6 +44,13 @@ export function parseTransactionInput(text: string): ParsedTransaction | null {
   };
 }
 
+export function parseTransactionInputs(text: string): ParsedTransaction[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => parseTransactionInput(line))
+    .filter((parsed): parsed is ParsedTransaction => parsed !== null);
+}
+
 function detectCurrency(text: string): Currency {
   const lower = text.toLowerCase();
   if (lower.includes("$") || lower.includes("usd")) return "USD";

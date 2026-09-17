@@ -1,6 +1,6 @@
 import { insertTransaction, listBalances, undoLastTransaction, upsertUser } from "./db";
 import { formatBalanceReport, formatRecorded, HELP_TEXT, formatAmount } from "./format";
-import { hasFinancialIntent, parseTransactionInput } from "./parser";
+import { hasFinancialIntent, parseTransactionInputs } from "./parser";
 import { displayName, parseCommand, sendMessage, type TelegramUpdate } from "./telegram";
 import type { Env } from "./types";
 
@@ -65,23 +65,25 @@ async function handleUpdate(env: Env, update: TelegramUpdate): Promise<void> {
       return;
     }
 
-    const parsed = parseTransactionInput(text);
-    if (parsed) {
+    const parsedTransactions = parseTransactionInputs(text);
+    if (parsedTransactions.length > 0) {
       try {
-        await insertTransaction(env.DB, {
-          chatId,
-          userId,
-          name,
-          amount: parsed.amount,
-          currency: parsed.currency,
-          note: parsed.note,
-        });
-        await sendMessage(
-          env.BOT_TOKEN,
-          chatId,
-          formatRecorded(name, parsed.amount, parsed.currency, parsed.note),
-          replyTo,
-        );
+        for (const parsed of parsedTransactions) {
+          await insertTransaction(env.DB, {
+            chatId,
+            userId,
+            name,
+            amount: parsed.amount,
+            currency: parsed.currency,
+            note: parsed.note,
+          });
+          await sendMessage(
+            env.BOT_TOKEN,
+            chatId,
+            formatRecorded(name, parsed.amount, parsed.currency, parsed.note),
+            replyTo,
+          );
+        }
       } catch (error) {
         console.error("Failed to record transaction", error);
         await sendMessage(
