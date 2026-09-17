@@ -68,6 +68,7 @@ async function handleUpdate(env: Env, update: TelegramUpdate): Promise<void> {
     const parsedTransactions = parseTransactionInputs(text);
     if (parsedTransactions.length > 0) {
       try {
+        const confirmations: string[] = [];
         for (const parsed of parsedTransactions) {
           await insertTransaction(env.DB, {
             chatId,
@@ -77,13 +78,9 @@ async function handleUpdate(env: Env, update: TelegramUpdate): Promise<void> {
             currency: parsed.currency,
             note: parsed.note,
           });
-          await sendMessage(
-            env.BOT_TOKEN,
-            chatId,
-            formatRecorded(name, parsed.amount, parsed.currency, parsed.note),
-            replyTo,
-          );
+          confirmations.push(formatRecorded(name, parsed.amount, parsed.currency, parsed.note));
         }
+        await sendMessage(env.BOT_TOKEN, chatId, confirmations.join("\n"), replyTo);
       } catch (error) {
         console.error("Failed to record transaction", error);
         await sendMessage(
