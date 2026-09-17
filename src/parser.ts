@@ -19,7 +19,7 @@ export function hasFinancialIntent(text: string): boolean {
 }
 
 export function parseTransactionInput(text: string): ParsedTransaction | null {
-  const raw = text.trim();
+  const raw = text.trim().replace(/[ *_~`]/g, " ");
   if (!raw) return null;
 
   const isIncome = raw.startsWith("+") || /\bkirim\b/i.test(raw);
