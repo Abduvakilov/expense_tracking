@@ -46,6 +46,15 @@ describe("parseTransactionInput", () => {
     });
   });
 
+  it("accepts Unicode bold Kirim", () => {
+    expect(parseTransactionInput("𝐊𝐢𝐫𝐢𝐦 salary 2 000")).toEqual({
+      amount: 2000,
+      currency: "UZS",
+      note: "salary",
+      type: "income",
+    });
+  });
+
   it("kartoshka, sabzi, piyoz jami 60 000", () => {
     expect(parseTransactionInput("kartoshka, sabzi, piyoz jami 60 000")).toEqual({
       amount: -60000,

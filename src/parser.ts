@@ -9,7 +9,7 @@ const STANDALONE_NUMBER_RE =
   /(?<![A-Za-z])\d+(?:[.\s]\d{3})*(?:[.,]\d{1,2})?(?![A-Za-z])/g;
 
 export function hasFinancialIntent(text: string): boolean {
-  const t = text.trim();
+  const t = normalizeInput(text).trim();
   if (!t) return false;
   if (t.startsWith("+")) return true;
   if (/\b(?:kirim|chiqim|jami)\b/i.test(t)) return true;
@@ -19,7 +19,7 @@ export function hasFinancialIntent(text: string): boolean {
 }
 
 export function parseTransactionInput(text: string): ParsedTransaction | null {
-  const raw = text.trim().replace(/[ *_~`]/g, " ");
+  const raw = normalizeInput(text).trim().replace(/[ *_~`]/g, " ");
   if (!raw) return null;
 
   const isIncome = raw.startsWith("+") || /\bkirim\b/i.test(raw);
@@ -49,6 +49,21 @@ export function parseTransactionInputs(text: string): ParsedTransaction[] {
     .split(/\r?\n/)
     .map((line) => parseTransactionInput(line))
     .filter((parsed): parsed is ParsedTransaction => parsed !== null);
+}
+
+function normalizeInput(text: string): string {
+  return [...text]
+    .map((character) => {
+      const codePoint = character.codePointAt(0) ?? 0;
+      if (codePoint >= 0x1d400 && codePoint <= 0x1d433) {
+        return String.fromCharCode(
+          codePoint <= 0x1d419 ? codePoint - 0x1d400 + 0x41 : codePoint - 0x1d41a + 0x61,
+        );
+      }
+      return character;
+    })
+    .join("")
+    .replace(/[\u200b-\u200d\ufeff]/g, "");
 }
 
 function detectCurrency(text: string): Currency {
