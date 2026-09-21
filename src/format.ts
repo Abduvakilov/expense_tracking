@@ -1,4 +1,4 @@
-import type { Currency } from "./types";
+import type { Currency, TransactionCategory } from "./types";
 
 const CURRENCIES: Currency[] = ["UZS", "USD", "EUR"];
 
@@ -23,8 +23,15 @@ function groupThousands(value: number, separator: string): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, separator);
 }
 
-export function formatRecorded(name: string, amount: number, currency: Currency, note: string): string {
-  return `✓ ${formatAmount(amount, currency)} ${currency}`;
+export function formatRecorded(
+  _name: string,
+  amount: number,
+  currency: Currency,
+  _note: string,
+  category?: TransactionCategory,
+): string {
+  const details = category ? ` • ${category}` : "";
+  return `✓ ${formatAmount(amount, currency)} ${currency}${details}`;
 }
 
 export const HELP_TEXT = `Expense tracker
@@ -33,6 +40,9 @@ Write a message in this chat to log a transaction. The last number is the amount
 
 • Expense (default): Kartoshka 3kg 15 000
 • Income: start with + or include "kirim"
+• Categories are inferred automatically (food, transport, bills, salary, etc.)
+• Choose a category manually with a tag: Taxi 25$ #transport
+  Uzbek tags also work: osh 25 000 #ovqat
 • Currencies stay separate — no conversion
   UZS (default), USD ($ / usd), EUR (€ / eur)
 
@@ -46,7 +56,9 @@ Examples
 
 Commands
 /balance — per-user and group totals by currency
-/undo — delete your most recent record in this chat
+/undo — delete your most recent record in this chat, or reply to a message to undo that entry
+/edit — replace a record by replying to it or by updating your latest item, e.g. /edit Taxi 30$ #transport
+/change — alias for /edit
 /help — this message
 
 In groups, disable privacy mode so the bot can see messages:

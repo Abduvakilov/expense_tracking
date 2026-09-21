@@ -18,6 +18,7 @@ export interface TelegramMessage {
   chat: TelegramChat;
   from?: TelegramUser;
   text?: string;
+  reply_to_message?: TelegramMessage;
 }
 
 export interface TelegramUpdate {

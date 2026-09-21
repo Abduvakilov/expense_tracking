@@ -1,4 +1,4 @@
-import type { Currency } from "./types";
+import type { Currency, TransactionCategory } from "./types";
 
 export interface TransactionRow {
   id: number;
@@ -8,6 +8,8 @@ export interface TransactionRow {
   amount: number;
   currency: Currency;
   note: string;
+  category: TransactionCategory;
+  message_id: number | null;
   created_at: string;
 }
 
@@ -38,15 +40,85 @@ export async function insertTransaction(
     amount: number;
     currency: Currency;
     note: string;
+    category: TransactionCategory;
+    messageId?: number;
   },
 ): Promise<void> {
   await db
     .prepare(
       `INSERT INTO transactions
-        (chat_id, telegram_user_id, telegram_user, amount, currency, note)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+        (chat_id, telegram_user_id, telegram_user, amount, currency, note, category, message_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(input.chatId, input.userId, input.name, input.amount, input.currency, input.note)
+    .bind(
+      input.chatId,
+      input.userId,
+      input.name,
+      input.amount,
+      input.currency,
+      input.note,
+      input.category,
+      input.messageId ?? null,
+    )
+    .run();
+}
+
+export async function findTransactionByReply(
+  db: D1Database,
+  chatId: number,
+  userId: number,
+  messageId: number,
+): Promise<TransactionRow | null> {
+  const result = await db
+    .prepare(
+      `SELECT *
+       FROM transactions
+       WHERE chat_id = ? AND telegram_user_id = ? AND message_id = ?
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1`,
+    )
+    .bind(chatId, userId, messageId)
+    .first<TransactionRow>();
+
+  return result ?? null;
+}
+
+export async function findLatestTransaction(
+  db: D1Database,
+  chatId: number,
+  userId: number,
+): Promise<TransactionRow | null> {
+  const result = await db
+    .prepare(
+      `SELECT *
+       FROM transactions
+       WHERE chat_id = ? AND telegram_user_id = ?
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1`,
+    )
+    .bind(chatId, userId)
+    .first<TransactionRow>();
+
+  return result ?? null;
+}
+
+export async function updateTransaction(
+  db: D1Database,
+  transactionId: number,
+  input: {
+    amount: number;
+    currency: Currency;
+    note: string;
+    category: TransactionCategory;
+  },
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE transactions
+       SET amount = ?, currency = ?, note = ?, category = ?
+       WHERE id = ?`,
+    )
+    .bind(input.amount, input.currency, input.note, input.category, transactionId)
     .run();
 }
 
@@ -102,6 +174,24 @@ export async function undoLastTransaction(
        RETURNING *`,
     )
     .bind(userId, chatId)
+    .first<TransactionRow>();
+
+  return result ?? null;
+}
+
+export async function undoTransactionByMessage(
+  db: D1Database,
+  chatId: number,
+  userId: number,
+  messageId: number,
+): Promise<TransactionRow | null> {
+  const result = await db
+    .prepare(
+      `DELETE FROM transactions
+       WHERE chat_id = ? AND telegram_user_id = ? AND message_id = ?
+       RETURNING *`,
+    )
+    .bind(chatId, userId, messageId)
     .first<TransactionRow>();
 
   return result ?? null;

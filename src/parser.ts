@@ -1,4 +1,4 @@
-import type { Currency, ParsedTransaction } from "./types";
+import type { Currency, ParsedTransaction, TransactionCategory } from "./types";
 
 const KEYWORD_RE = /\b(?:kirim|chiqim|jami)\b/gi;
 const CURRENCY_TOKEN_RE =
@@ -7,6 +7,24 @@ const CURRENCY_TOKEN_RE =
 /** Standalone numbers, including space/dot thousand groups. Not 3kg. */
 const STANDALONE_NUMBER_RE =
   /(?<![A-Za-z])\d+(?:[.\s]\d{3})*(?:[.,]\d{1,2})?(?![A-Za-z])/g;
+const CATEGORY_TAG_RE = /(?:^|\s)#([a-z][a-z-]*)\b/i;
+
+const EXPENSE_CATEGORY_RULES: Array<[TransactionCategory, RegExp]> = [
+  ["food", /\b(?:kartoshka|sabzi|piyoz|ovqat|oziqovqat|mahsulot|bozor|dokon|oshxona|osh|taom|non|nonushta|tushlik|kechki ovqat|buyurtma|yetkazib berish|gosht|baliq|tovuq|meva|sabzavot|shakar|qand|yogurt|sut|qatiq|kefir|tuz|murch|baqlajon|pomidor|bodring|guruch|makaron|moy|un|choy|qahva|shirinlik|muzqaymoq|somsa|manti|lagmon|shorva|kabob|lavash|pizza)\b/i],
+  ["transport", /\b(?:taksi|taxi|avtobus|metro|poyezd|poezd|mashina|avtomobil|avto|yol haqi|yol kira|benzin|yoqilgi|gaz|moy|shina|ehtiyot qism|tamirlash|haydovchi|bekat|bilet|samolyot|transport)\b/i],
+  ["housing", /\b(?:ijara|uy|xonadon|kvartira|hovli|yotoqxona|uyjoy|bino|xona|qurilish|tamirlash|boyoq|mebel|jihoz|kommunal|elektr|elektr toki|suv|gaz|issiqlik|isitish|sovutish|internet|wifi)\b/i],
+  ["health", /\b(?:shifoxona|poliklinika|klinika|doktor|shifokor|dori|doridarmon|dorixona|vitamin|tahlil|analiz|davolanish|muolaja|salomatlik|sogliq|tish|tish shifokori|tez yordam|jarrohlik|korik)\b/i],
+  ["education", /\b(?:kurs|oquv kursi|maktab|universitet|oliygoh|kollej|talim|dars|oqish|oqituvchi|ustoz|kitob|daftar|qalam|imtihon|kontrakt|stipendiya|maktab formasi)\b/i],
+  ["entertainment", /\b(?:kino|film|teatr|konsert|musiqa|qoshiq|park|sayr|dam olish|sport|futbol|tennis|oyin|oyinkulgi|tadbir|tomosha|muzey|basseyn|zal)\b/i],
+  ["bills", /\b(?:tolov|hisob|qarz|komissiya|kommunal|elektr|suv|gaz|internet|wifi|telefon|mobil aloqa|sim karta|tarif|abonent tolovi|jarima|soliq|chek)\b/i],
+  ["gifts", /\b(?:sovga|hadya|tugilgan kun|toy|nikoh|bayram|mehmon|mehmondorchilik|duo|marosim|chaqaloq|tabrik)\b/i],
+  ["travel", /\b(?:safar|sayohat|mehmonxona|yotoq|aviachipta|samolyot|poyezd|yol|tur|dam olish maskani|viza|pasport|bagaj|bilet)\b/i],
+  ["shopping", /\b(?:xarid|sotib olish|olish|dokon|bozor|kiyim|ustbosh|poyabzal|koylak|shim|kurtka|palto|romol|sumka|soat|telefon|kompyuter|noutbuk|quloqchin|elektronika|aksessuar|oyinchoq|idish|uyrozgor)\b/i],
+];
+
+const INCOME_CATEGORY_RULES: Array<[TransactionCategory, RegExp]> = [
+  ["salary", /\b(?:salary|maosh|ishhaq|oylik|paycheck|pension|stipendiya|daromad|ish|ish haqi|menejment|zarp|zarpata|qarz)\b/i],
+];
 
 export function hasFinancialIntent(text: string): boolean {
   const t = normalizeInput(text).trim();
@@ -19,7 +37,7 @@ export function hasFinancialIntent(text: string): boolean {
 }
 
 export function parseTransactionInput(text: string): ParsedTransaction | null {
-  const raw = normalizeInput(text).trim().replace(/[ *_~`]/g, " ");
+  const raw = normalizeInput(text).trim().replace(/[`]/g, "").replace(/[ *_~]/g, " ");
   if (!raw) return null;
 
   const isIncome = raw.startsWith("+") || /\bkirim\b/i.test(raw);
@@ -34,21 +52,93 @@ export function parseTransactionInput(text: string): ParsedTransaction | null {
   if (!Number.isFinite(price) || price === 0) return null;
 
   const amount = isIncome ? price : -price;
+  const explicitCategory = detectExplicitCategory(raw);
   const note = extractNote(raw, last.index ?? 0, token.length, isIncome);
+  const category = explicitCategory ?? detectCategory(raw, isIncome, note);
 
   return {
     amount,
     currency,
     note,
     type: isIncome ? "income" : "expense",
+    category,
   };
 }
 
+function detectExplicitCategory(text: string): TransactionCategory | null {
+  const match = text.match(CATEGORY_TAG_RE);
+  if (!match) return null;
+
+  const category = normalizeCategoryText(match[1]);
+  const aliases: Record<string, TransactionCategory> = {
+    food: "food",
+    ovqat: "food",
+    transport: "transport",
+    shopping: "shopping",
+    xarid: "shopping",
+    housing: "housing",
+    uyjoy: "housing",
+    health: "health",
+    sogliq: "health",
+    education: "education",
+    talim: "education",
+    entertainment: "entertainment",
+    bills: "bills",
+    tolov: "bills",
+    gifts: "gifts",
+    sovga: "gifts",
+    travel: "travel",
+    salary: "salary",
+    maosh: "salary",
+    other: "other",
+    boshqa: "other",
+  };
+
+  return aliases[category] ?? null;
+}
+
 export function parseTransactionInputs(text: string): ParsedTransaction[] {
-  return text
+  const lines = text
     .split(/\r?\n/)
-    .map((line) => parseTransactionInput(line))
-    .filter((parsed): parsed is ParsedTransaction => parsed !== null);
+    .map((line) => normalizeInput(line).trim())
+    .filter((line) => line.length > 0);
+
+  const parsed: ParsedTransaction[] = [];
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const direct = parseTransactionInput(line);
+    if (direct) {
+      parsed.push(direct);
+      continue;
+    }
+
+    if (!hasFinancialIntent(line)) continue;
+
+    let nextIndex = index + 1;
+    let foundAmount = false;
+
+    while (nextIndex < lines.length) {
+      const candidate = parseTransactionInput(`${line} ${lines[nextIndex]}`);
+      if (!candidate) {
+        const nextLine = lines[nextIndex];
+        if (nextLine && !/\d/.test(nextLine) && hasFinancialIntent(nextLine)) {
+          break;
+        }
+        break;
+      }
+
+      parsed.push(candidate);
+      foundAmount = true;
+      nextIndex += 1;
+    }
+
+    if (foundAmount) {
+      index = nextIndex - 1;
+    }
+  }
+
+  return parsed;
 }
 
 function normalizeInput(text: string): string {
@@ -63,7 +153,24 @@ function normalizeInput(text: string): string {
       return character;
     })
     .join("")
-    .replace(/[\u200b-\u200d\ufeff]/g, "");
+    .replace(/[\u200b-\u200d\ufeff]/g, "")
+    .replace(/[\u0400-\u04FF]/g, (char) => transliterateCyrillic(char));
+}
+
+function transliterateCyrillic(char: string): string {
+  const map: Record<string, string> = {
+    А: "A", а: "a", Б: "B", б: "b", В: "V", в: "v", Г: "G", г: "g", Д: "D", д: "d",
+    Е: "E", е: "e", Ё: "Yo", ё: "yo", Ж: "Zh", ж: "zh", З: "Z", з: "z", И: "I", и: "i",
+    Й: "Y", й: "y", К: "K", к: "k", Л: "L", л: "l", М: "M", м: "m", Н: "N", н: "n",
+    О: "O", о: "o", П: "P", п: "p", Р: "R", р: "r", С: "S", с: "s", Т: "T", т: "t",
+    У: "U", у: "u", Ф: "F", ф: "f", Х: "X", х: "x", Ц: "Ts", ц: "ts", Ч: "Ch", ч: "ch",
+    Ш: "Sh", ш: "sh", Ы: "Y", ы: "y", Ь: "", ь: "",
+    Э: "E", э: "e", Ю: "Yu", ю: "yu", Я: "Ya", я: "ya",
+    Ў: "O'", ў: "o'", Қ: "Q", қ: "q", Ғ: "G'", ғ: "g'",
+    Ҳ: "H", ҳ: "h", 
+  };
+
+  return map[char] ?? char;
 }
 
 function detectCurrency(text: string): Currency {
@@ -71,6 +178,42 @@ function detectCurrency(text: string): Currency {
   if (lower.includes("$") || lower.includes("usd")) return "USD";
   if (lower.includes("€") || lower.includes("eur")) return "EUR";
   return "UZS";
+}
+
+function detectCategory(raw: string, isIncome: boolean, note: string): TransactionCategory {
+  const source = normalizeCategoryText(`${raw} ${note}`);
+
+  if (isIncome) {
+    const match = INCOME_CATEGORY_RULES.find(([, pattern]) => pattern.test(source));
+    return match?.[0] ?? "other";
+  }
+
+  const match = EXPENSE_CATEGORY_RULES.find(([, pattern]) => pattern.test(source));
+  return match?.[0] ?? "other";
+}
+
+function normalizeCategoryText(text: string): string {
+  let normalized = "";
+  const folded = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+
+  for (const character of folded) {
+    if (
+      (character >= "a" && character <= "z") ||
+      (character >= "0" && character <= "9") ||
+      character === " "
+    ) {
+      normalized += character;
+    } else if ("'’ʻʼ`ʽʾˈˊˋ˴＇".includes(character)) {
+      continue;
+    } else {
+      normalized += " ";
+    }
+  }
+
+  return normalized.replace(/ +/g, " ").trim();
 }
 
 function parsePriceToken(token: string): number {
@@ -98,6 +241,7 @@ function extractNote(
   if (note.startsWith("+")) note = note.slice(1);
   note = note.replace(CURRENCY_TOKEN_RE, " ");
   note = note.replace(KEYWORD_RE, " ");
+  note = note.replace(CATEGORY_TAG_RE, " ");
   note = note.replace(/\s+/g, " ").trim();
   note = note.replace(/^[,.;:!?]+|[,.;:!?]+$/g, "").trim();
   if (!note) return isIncome ? "Income" : "Expense";

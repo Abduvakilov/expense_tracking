@@ -10,6 +10,7 @@ describe("parseTransactionInput", () => {
       currency: "UZS",
       note: "Kartoshka 3kg",
       type: "expense",
+      category: "food",
     });
   });
 
@@ -19,6 +20,7 @@ describe("parseTransactionInput", () => {
       currency: "UZS",
       note: "Doniyor",
       type: "income",
+      category: "other",
     });
   });
 
@@ -28,12 +30,14 @@ describe("parseTransactionInput", () => {
       currency: "UZS",
       note: "salary",
       type: "income",
+      category: "salary",
     });
     expect(parseTransactionInput("Salary kirim 2 000")).toEqual({
       amount: 2000,
       currency: "UZS",
       note: "Salary",
       type: "income",
+      category: "salary",
     });
   });
 
@@ -43,6 +47,7 @@ describe("parseTransactionInput", () => {
       currency: "UZS",
       note: "salary",
       type: "income",
+      category: "salary",
     });
   });
 
@@ -52,6 +57,7 @@ describe("parseTransactionInput", () => {
       currency: "UZS",
       note: "salary",
       type: "income",
+      category: "salary",
     });
   });
 
@@ -61,6 +67,7 @@ describe("parseTransactionInput", () => {
       currency: "UZS",
       note: "kartoshka, sabzi, piyoz",
       type: "expense",
+      category: "food",
     });
   });
 
@@ -70,6 +77,7 @@ describe("parseTransactionInput", () => {
       currency: "USD",
       note: "Taxi",
       type: "expense",
+      category: "transport",
     });
   });
 
@@ -79,6 +87,7 @@ describe("parseTransactionInput", () => {
       currency: "EUR",
       note: "Expense",
       type: "expense",
+      category: "other",
     });
   });
 
@@ -88,6 +97,7 @@ describe("parseTransactionInput", () => {
       currency: "UZS",
       note: "salary",
       type: "income",
+      category: "salary",
     });
   });
 
@@ -98,9 +108,66 @@ describe("parseTransactionInput", () => {
 
   it("parses multiple newline-separated transactions", () => {
     expect(parseTransactionInputs("Taxi 25$\nKartoshka 15 000")).toEqual([
-      { amount: -25, currency: "USD", note: "Taxi", type: "expense" },
-      { amount: -15000, currency: "UZS", note: "Kartoshka", type: "expense" },
+      { amount: -25, currency: "USD", note: "Taxi", type: "expense", category: "transport" },
+      { amount: -15000, currency: "UZS", note: "Kartoshka", type: "expense", category: "food" },
     ]);
+  });
+
+  it("parses note lines followed by amount lines as repeated transactions", () => {
+    expect(parseTransactionInputs("Salary kirim\n1000000\n500$")).toEqual([
+      { amount: 1000000, currency: "UZS", note: "Salary", type: "income", category: "salary" },
+      { amount: 500, currency: "USD", note: "Salary", type: "income", category: "salary" },
+    ]);
+  });
+
+  it("normalizes Cyrillic text and strips punctuation before categorisation", () => {
+    expect(parseTransactionInput("Такси, 25$")) .toEqual({
+      amount: -25,
+      currency: "USD",
+      note: "Taksi",
+      type: "expense",
+      category: "transport",
+    });
+  });
+
+  it("folds accented letters and removes apostrophe separators before categorisation", () => {
+    expect(parseTransactionInput("Tö'lov 25 000")).toMatchObject({
+      amount: -25000,
+      category: "bills",
+    });
+  });
+
+  it.each(["tó'lov", "tò`lov", "tȯlov", "tôlov", "tölov", "tǒlov", "tŏlov", "tōlov", "tõlov"])(
+    "categorises accented and separated %s as bills",
+    (word) => {
+      expect(parseTransactionInput(`${word} 25 000`)).toMatchObject({
+        amount: -25000,
+        category: "bills",
+      });
+    },
+  );
+
+  it("removes hyphens and punctuation before categorisation", () => {
+    expect(parseTransactionInput("oziq-ovqat, 40 000")).toMatchObject({
+      amount: -40000,
+      category: "food",
+    });
+  });
+
+  it("allows a category tag to override automatic categorisation", () => {
+    expect(parseTransactionInput("Taxi 25$ #food")).toMatchObject({
+      amount: -25,
+      category: "food",
+      note: "Taxi",
+    });
+  });
+
+  it("supports Uzbek category aliases in manual tags", () => {
+    expect(parseTransactionInput("Telefon 100 000 #tolov")).toMatchObject({
+      amount: -100000,
+      category: "bills",
+      note: "Telefon",
+    });
   });
 });
 
@@ -121,6 +188,9 @@ describe("format helpers", () => {
   it("formats recorded confirmation", () => {
     expect(formatRecorded("Ali", -15000, "UZS", "Kartoshka 3kg")).toBe(
       "✓ -15 000 UZS",
+    );
+    expect(formatRecorded("Ali", -15000, "UZS", "Kartoshka 3kg", "food")).toBe(
+      "✓ -15 000 UZS • food",
     );
   });
 

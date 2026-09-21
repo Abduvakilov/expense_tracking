@@ -1,4 +1,13 @@
-import { insertTransaction, listBalances, undoLastTransaction, upsertUser } from "./db";
+import {
+  findLatestTransaction,
+  findTransactionByReply,
+  insertTransaction,
+  listBalances,
+  undoLastTransaction,
+  undoTransactionByMessage,
+  updateTransaction,
+  upsertUser,
+} from "./db";
 import { formatBalanceReport, formatRecorded, HELP_TEXT, formatAmount } from "./format";
 import { hasFinancialIntent, parseTransactionInputs } from "./parser";
 import { displayName, parseCommand, sendMessage, type TelegramUpdate } from "./telegram";
@@ -52,6 +61,7 @@ async function handleUpdate(env: Env, update: TelegramUpdate): Promise<void> {
     const name = displayName(message.from);
     const text = message.text;
     const replyTo = message.message_id;
+    const repliedMessageId = message.reply_to_message?.message_id;
 
     try {
       await upsertUser(env.DB, chatId, userId, name);
@@ -61,7 +71,7 @@ async function handleUpdate(env: Env, update: TelegramUpdate): Promise<void> {
 
     const command = parseCommand(text);
     if (command) {
-      await handleCommand(env, chatId, userId, name, command.command, replyTo);
+      await handleCommand(env, chatId, userId, name, command.command, command.rest, replyTo, repliedMessageId);
       return;
     }
 
@@ -77,8 +87,12 @@ async function handleUpdate(env: Env, update: TelegramUpdate): Promise<void> {
             amount: parsed.amount,
             currency: parsed.currency,
             note: parsed.note,
+            category: parsed.category,
+            messageId: message.message_id,
           });
-          confirmations.push(formatRecorded(name, parsed.amount, parsed.currency, parsed.note));
+          confirmations.push(
+            formatRecorded(name, parsed.amount, parsed.currency, parsed.note, parsed.category),
+          );
         }
         await sendMessage(env.BOT_TOKEN, chatId, confirmations.join("\n"), replyTo);
       } catch (error) {
@@ -112,7 +126,9 @@ async function handleCommand(
   userId: number,
   name: string,
   command: string,
+  rest: string,
   replyTo: number,
+  repliedMessageId?: number,
 ): Promise<void> {
   try {
     if (command === "/start" || command === "/help") {
@@ -127,15 +143,75 @@ async function handleCommand(
     }
 
     if (command === "/undo") {
-      const deleted = await undoLastTransaction(env.DB, chatId, userId);
+      const deleted = repliedMessageId
+        ? await undoTransactionByMessage(env.DB, chatId, userId, repliedMessageId)
+        : await undoLastTransaction(env.DB, chatId, userId);
       if (!deleted) {
-        await sendMessage(env.BOT_TOKEN, chatId, `${name}, you have no transactions to undo in this chat.`, replyTo);
+        await sendMessage(
+          env.BOT_TOKEN,
+          chatId,
+          `${name}, you have no matching transaction to undo in this chat.`,
+          replyTo,
+        );
         return;
       }
       await sendMessage(
         env.BOT_TOKEN,
         chatId,
         `🗑️ Undone for ${deleted.telegram_user}: ${formatAmount(deleted.amount, deleted.currency)} ${deleted.currency} (${deleted.note})`,
+        replyTo,
+      );
+      return;
+    }
+
+    if (command === "/edit" || command === "/change") {
+      if (!rest.trim()) {
+        await sendMessage(
+          env.BOT_TOKEN,
+          chatId,
+          "✏️ Send a new transaction after /edit, for example: /edit Taxi 30$",
+          replyTo,
+        );
+        return;
+      }
+
+      const parsed = parseTransactionInputs(rest.trim());
+      if (parsed.length === 0) {
+        await sendMessage(
+          env.BOT_TOKEN,
+          chatId,
+          "⚠️ Could not parse the replacement. Example: /edit Taxi 30$",
+          replyTo,
+        );
+        return;
+      }
+
+      const replacement = parsed[0];
+      const target = repliedMessageId
+        ? await findTransactionByReply(env.DB, chatId, userId, repliedMessageId)
+        : await findLatestTransaction(env.DB, chatId, userId);
+
+      if (!target) {
+        await sendMessage(
+          env.BOT_TOKEN,
+          chatId,
+          `${name}, there is no transaction to edit in this chat. Reply to one or use /edit on your latest item.`,
+          replyTo,
+        );
+        return;
+      }
+
+      await updateTransaction(env.DB, target.id, {
+        amount: replacement.amount,
+        currency: replacement.currency,
+        note: replacement.note,
+        category: replacement.category,
+      });
+
+      await sendMessage(
+        env.BOT_TOKEN,
+        chatId,
+        `✏️ Updated: ${formatAmount(replacement.amount, replacement.currency)} ${replacement.currency} (${replacement.note})`,
         replyTo,
       );
       return;
