@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { hasFinancialIntent, parseTransactionInput, parseTransactionInputs } from "./parser";
+import { describe, expect, it, vi } from "vitest";
+import {
+  hasFinancialIntent,
+  parseOfdReceiptLinks,
+  parseOfdReceiptUrl,
+  parseTransactionInput,
+  parseTransactionInputs,
+} from "./parser";
 import { formatAmount, formatBalanceReport, formatRecorded } from "./format";
 import { parseCommand } from "./telegram";
 
@@ -169,6 +175,81 @@ describe("parseTransactionInput", () => {
       note: "Telefon",
     });
   });
+
+  it("accepts gift aliases in manual tags", () => {
+    expect(parseTransactionInput("Gift 250 000 #gift")).toMatchObject({
+      amount: -250000,
+      category: "gifts",
+      note: "Gift",
+    });
+  });
+
+  it("normalizes punctuation out of hashtags before matching categories", () => {
+    expect(parseTransactionInput("Ta'lim kursi 250 000 #talim")).toMatchObject({
+      amount: -250000,
+      category: "education",
+      note: "Ta'lim kursi",
+    });
+    expect(parseTransactionInput("Kino 40 000 #kongilochar")).toMatchObject({
+      amount: -40000,
+      category: "entertainment",
+      note: "Kino",
+    });
+  });
+});
+
+describe("parseOfdReceiptUrl", () => {
+  it("parses OFD receipt URLs into categorized expense items", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          paymentDetails: [
+            { name: "<А> BANAN KG", price: 3509 },
+            { name: "SHERIN KOLBASA FARAH YARIM DUDLANGAN 180GR QADOQDA", price: 14000 },
+            { name: "A'SU GAZLANMAGAN SUV YALPIZ 0,5L PET", price: 3000 },
+          ],
+        },
+      }),
+    }) as typeof fetch;
+
+    try {
+      await expect(
+        parseOfdReceiptUrl(
+          "https://ofd.soliq.uz/check?t=VG298430011007&r=5522&c=20220105200244&s=931351329501",
+        ),
+      ).resolves.toEqual([
+        { amount: -3509, currency: "UZS", note: "<А> BANAN KG", type: "expense", category: "food" },
+        { amount: -14000, currency: "UZS", note: "SHERIN KOLBASA FARAH YARIM DUDLANGAN 180GR QADOQDA", type: "expense", category: "food" },
+        { amount: -3000, currency: "UZS", note: "A'SU GAZLANMAGAN SUV YALPIZ 0,5L PET", type: "expense", category: "food" },
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("collects OFD URLs from a message and parses each receipt", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          paymentDetails: [{ name: "Banana", price: 5000 }],
+        },
+      }),
+    }) as typeof fetch;
+
+    try {
+      await expect(
+        parseOfdReceiptLinks(
+          "https://ofd.soliq.uz/check?t=VG298430011007&r=5522&c=20220105200244&s=931351329501 and https://ofd.soliq.uz/check?t=VG298430011007&r=5523&c=20220105200344&s=931351329502",
+        ),
+      ).resolves.toHaveLength(2);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });
 
 describe("hasFinancialIntent", () => {
@@ -190,7 +271,7 @@ describe("format helpers", () => {
       "✓ -15 000 UZS",
     );
     expect(formatRecorded("Ali", -15000, "UZS", "Kartoshka 3kg", "food")).toBe(
-      "✓ -15 000 UZS • food",
+      "✓ -15 000 UZS • ovqat",
     );
   });
 
@@ -209,7 +290,7 @@ describe("format helpers", () => {
     expect(text).toContain("UZS: -15 000");
     expect(text).toContain("USD: -25");
     expect(text).toContain("EUR: 0");
-    expect(text).toContain("Group totals");
+    expect(text).toContain("Guruh yig'indisi");
   });
 });
 

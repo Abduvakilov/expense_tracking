@@ -30,38 +30,74 @@ export function formatRecorded(
   _note: string,
   category?: TransactionCategory,
 ): string {
-  const details = category ? ` • ${category}` : "";
+  const details = category ? ` • ${translateCategory(category)}` : "";
   return `✓ ${formatAmount(amount, currency)} ${currency}${details}`;
 }
 
-export const HELP_TEXT = `Expense tracker
+function translateCategory(category: TransactionCategory): string {
+  const map: Record<TransactionCategory, string> = {
+    food: "ovqat",
+    transport: "transport",
+    housing: "uy",
+    health: "salomatlik",
+    education: "ta'lim",
+    entertainment: "ko'ngilochar",
+    bills: "to'lovlar",
+    gifts: "sovgalar",
+    travel: "sayohat",
+    shopping: "xaridlar",
+    salary: "maosh",
+    other: "boshqa",
+  };
+  return map[category] ?? category;
+}
 
-Write a message in this chat to log a transaction. The last number is the amount.
+export const HELP_TEXT = `Sarflar hisobi bot
 
-• Expense (default): Kartoshka 3kg 15 000
-• Income: start with + or include "kirim"
-• Categories are inferred automatically (food, transport, bills, salary, etc.)
-• Choose a category manually with a tag: Taxi 25$ #transport
-  Uzbek tags also work: osh 25 000 #ovqat
-• Currencies stay separate — no conversion
-  UZS (default), USD ($ / usd), EUR (€ / eur)
+Bu chatga xabar yozing — oxirgi raqam summa bo'ladi.
 
-Examples
+• Xarajat (standart): Kartoshka 3kg 15 000
+• Kirim: + bilan boshlang yoki "kirim" so'zini yozing
+• Kategoriya avtomatik aniqlanadi: ovqat, transport, to'lovlar, maosh va boshqalar
+• Kategoriyani qo'lda kiritish mumkin: Taksi 25$ #transport
+• O'zbekcha teglar ham ishlaydi: osh 25 000 #ovqat
+• Sovgalar uchun: Tort 250 000 #gift
+
+Kategoriyalar:
+#food — ovqat
+#transport — transport
+#housing — uy
+#health — salomatlik
+#education — ta'lim
+#entertainment — ko'ngilochar
+#bills — to'lovlar
+#gifts — sovgalar
+#travel — sayohat
+#shopping — xaridlar
+#salary — maosh
+#other — boshqa
+
+Valyutalar alohida yuritiladi — konvertatsiya qilinmaydi:
+UZS (standart), USD ($ / usd), EUR (€ / eur)
+
+Misollar
 • Kartoshka 3kg 15 000
 • Doniyor kirim 2 000 000
 • kartoshka, sabzi, piyoz jami 60 000
-• Taxi 25$
+• Taksi 25$
 • +1000 usd
 • 1 000 eur
 
-Commands
-/balance — per-user and group totals by currency
-/undo — delete your most recent record in this chat, or reply to a message to undo that entry
-/edit — replace a record by replying to it or by updating your latest item, e.g. /edit Taxi 30$ #transport
-/change — alias for /edit
-/help — this message
+Buyruqlar
+/balance — bu chatdagi foydalanuvchilar va guruh balanslari
+/balance 500000 — bu guruhning UZS balansini 500000 ga o'rnatadi
+/setbalance 500000 UZS — guruh balansini aniq o'rnatish
+/undo — oxirgi yozuvni o'chirish yoki javob berilgan xabarni bekor qilish
+/edit — yozuvni o'zgartirish, masalan: /edit Taksi 30$ #transport
+/change — /edit ning qisqartmasi
+/help — bu xabar
 
-In groups, disable privacy mode so the bot can see messages:
+Guruhda botga xabarlarni ko'rishga ruxsat berish uchun:
 BotFather → /setprivacy → Disable`;
 
 export function formatBalanceReport(
@@ -69,7 +105,7 @@ export function formatBalanceReport(
   totals: Array<{ currency: Currency; total: number }>,
 ): string {
   if (rows.length === 0) {
-    return "📊 No transactions recorded in this chat yet.";
+    return "📊 Hali bu chatda hech qanday tranzaksiya yo'q.";
   }
 
   const byUser = new Map<
@@ -90,7 +126,7 @@ export function formatBalanceReport(
     }
   }
 
-  const lines: string[] = ["📊 Balances"];
+  const lines: string[] = ["📊 Balanslar"];
 
   for (const { name, sums } of byUser.values()) {
     lines.push("");
@@ -106,7 +142,7 @@ export function formatBalanceReport(
 
   lines.push("");
   lines.push("────────");
-  lines.push("👥 Group totals");
+  lines.push("👥 Guruh yig'indisi");
   for (const currency of CURRENCIES) {
     const value = totalMap[currency] ?? 0;
     lines.push(`  ${currency}: ${formatAmount(value, currency)}`);

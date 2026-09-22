@@ -51,6 +51,7 @@ npm run dev
 | `Taxi 25$` | −25 USD, category transport |
 | `1 000 eur` | −1000 EUR, note Expense, category other |
 | `/balance` | Per-user + group totals by currency |
+| `/balance 500000` or `/setbalance 500000 UZS` | Sets the group's net balance for the chosen currency |
 | `/undo` | Deletes your latest row in this chat |
 | `/start` `/help` | Examples and rules |
 

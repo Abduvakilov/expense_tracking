@@ -9,7 +9,7 @@ import {
   upsertUser,
 } from "./db";
 import { formatBalanceReport, formatRecorded, HELP_TEXT, formatAmount } from "./format";
-import { hasFinancialIntent, parseTransactionInputs } from "./parser";
+import { hasFinancialIntent, parseOfdReceiptLinks, parseTransactionInputs } from "./parser";
 import { displayName, parseCommand, sendMessage, type TelegramUpdate } from "./telegram";
 import type { Env } from "./types";
 
@@ -75,6 +75,38 @@ async function handleUpdate(env: Env, update: TelegramUpdate): Promise<void> {
       return;
     }
 
+    const ofdTransactions = await parseOfdReceiptLinks(text);
+    if (ofdTransactions.length > 0) {
+      try {
+        const confirmations: string[] = [];
+        for (const parsed of ofdTransactions) {
+          await insertTransaction(env.DB, {
+            chatId,
+            userId,
+            name,
+            amount: parsed.amount,
+            currency: parsed.currency,
+            note: parsed.note,
+            category: parsed.category,
+            messageId: message.message_id,
+          });
+          confirmations.push(
+            formatRecorded(name, parsed.amount, parsed.currency, parsed.note, parsed.category),
+          );
+        }
+        await sendMessage(env.BOT_TOKEN, chatId, confirmations.join("\n"), replyTo);
+      } catch (error) {
+        console.error("Failed to record OFD receipt transaction", error);
+        await sendMessage(
+          env.BOT_TOKEN,
+          chatId,
+          "⚠️ Chekni saqlab bo'lmadi. Qayta urinib ko'ring.",
+          replyTo,
+        );
+      }
+      return;
+    }
+
     const parsedTransactions = parseTransactionInputs(text);
     if (parsedTransactions.length > 0) {
       try {
@@ -100,7 +132,7 @@ async function handleUpdate(env: Env, update: TelegramUpdate): Promise<void> {
         await sendMessage(
           env.BOT_TOKEN,
           chatId,
-          "⚠️ Could not save that transaction. Please try again.",
+        "⚠️ Xaridni saqlab bo'lmadi. Qayta urinib ko'ring.",
           replyTo,
         );
       }
@@ -111,13 +143,58 @@ async function handleUpdate(env: Env, update: TelegramUpdate): Promise<void> {
       await sendMessage(
         env.BOT_TOKEN,
         chatId,
-        '⚠️ Could not detect an amount. Please include a price (e.g., "Taxi 25$" or "Kartoshka 15 000").',
+      '⚠️ Summa aniqlanmadi. Iltimos, narx kiriting (masalan: "Taxi 25$" yoki "Kartoshka 15 000").',
         replyTo,
       );
     }
   } catch (error) {
     console.error("handleUpdate failed", error);
   }
+}
+
+async function parseBalanceOverride(
+  input: string,
+  chatId: number,
+  db: D1Database,
+): Promise<{ currency: "UZS" | "USD" | "EUR"; previous: number; target: number; delta: number } | null> {
+  const match = input.match(/^([+-]?\d[\d\s.,]*)\s*(UZS|USD|EUR|UZ|US|EU|SOM|SOUM|som|soum|usd|eur)?$/i);
+  if (!match) return null;
+
+  const rawAmount = match[1].replace(/\s+/g, "");
+  const currencyValue = (match[2] ?? "UZS").toUpperCase();
+  const currency = currencyValue === "US" || currencyValue === "USD" ? "USD"
+    : currencyValue === "EU" || currencyValue === "EUR" ? "EUR"
+    : currencyValue === "SOM" || currencyValue === "SOUM" ? "UZS"
+    : currencyValue === "UZS" ? "UZS"
+    : "UZS";
+
+  const amount = parseNumericAmount(rawAmount);
+  if (!Number.isFinite(amount)) return null;
+
+  const { totals } = await listBalances(db, chatId);
+  const previous = totals.find((row) => row.currency === currency)?.total ?? 0;
+
+  return {
+    currency,
+    previous,
+    target: amount,
+    delta: amount - previous,
+  };
+}
+
+function parseNumericAmount(value: string): number {
+  const compact = value.replace(/\s+/g, "");
+  if (!compact) return Number.NaN;
+  if (/^\d{1,3}(?:\.\d{3})+$/.test(compact)) {
+    return Number(compact.replace(/\./g, ""));
+  }
+  if (/^\d{1,3}(?:,\d{3})+$/.test(compact)) {
+    return Number(compact.replace(/,/g, ""));
+  }
+  if (/^\d+,\d{1,2}$/.test(compact)) {
+    return Number(compact.replace(",", "."));
+  }
+  return Number(compact);
 }
 
 async function handleCommand(
@@ -136,9 +213,40 @@ async function handleCommand(
       return;
     }
 
-    if (command === "/balance") {
-      const { users, totals } = await listBalances(env.DB, chatId);
-      await sendMessage(env.BOT_TOKEN, chatId, formatBalanceReport(users, totals), replyTo);
+    if (command === "/balance" || command === "/setbalance") {
+      if (!rest.trim()) {
+        const { users, totals } = await listBalances(env.DB, chatId);
+        await sendMessage(env.BOT_TOKEN, chatId, formatBalanceReport(users, totals), replyTo);
+        return;
+      }
+
+      const parsed = await parseBalanceOverride(rest.trim(), chatId, env.DB);
+      if (!parsed) {
+        await sendMessage(
+          env.BOT_TOKEN,
+          chatId,
+          "⚠️ Foydalanish: /balance 500000 yoki /setbalance 500000 UZS",
+          replyTo,
+        );
+        return;
+      }
+
+      await insertTransaction(env.DB, {
+        chatId,
+        userId,
+        name,
+        amount: parsed.delta,
+        currency: parsed.currency,
+        note: "Guruh balansini o'zgartirish",
+        category: "other",
+      });
+
+      await sendMessage(
+        env.BOT_TOKEN,
+        chatId,
+        `💰 Guruh balansi yangilandi: ${formatAmount(parsed.previous, parsed.currency)} ${parsed.currency} → ${formatAmount(parsed.target, parsed.currency)} ${parsed.currency}`,
+        replyTo,
+      );
       return;
     }
 
@@ -150,7 +258,7 @@ async function handleCommand(
         await sendMessage(
           env.BOT_TOKEN,
           chatId,
-          `${name}, you have no matching transaction to undo in this chat.`,
+          `${name}, bu chatda bekor qilish uchun mos tranzaksiya yo'q.`,
           replyTo,
         );
         return;
@@ -158,7 +266,7 @@ async function handleCommand(
       await sendMessage(
         env.BOT_TOKEN,
         chatId,
-        `🗑️ Undone for ${deleted.telegram_user}: ${formatAmount(deleted.amount, deleted.currency)} ${deleted.currency} (${deleted.note})`,
+        `🗑️ ${deleted.telegram_user} uchun bekor qilindi: ${formatAmount(deleted.amount, deleted.currency)} ${deleted.currency} (${deleted.note})`,
         replyTo,
       );
       return;
@@ -169,7 +277,7 @@ async function handleCommand(
         await sendMessage(
           env.BOT_TOKEN,
           chatId,
-          "✏️ Send a new transaction after /edit, for example: /edit Taxi 30$",
+          "✏️ /edit dan keyin yangi tranzaksiya yozing, masalan: /edit Taksi 30$",
           replyTo,
         );
         return;
@@ -180,7 +288,7 @@ async function handleCommand(
         await sendMessage(
           env.BOT_TOKEN,
           chatId,
-          "⚠️ Could not parse the replacement. Example: /edit Taxi 30$",
+          "⚠️ O'zgartirishni o'qib bo'lmadi. Misol: /edit Taksi 30$",
           replyTo,
         );
         return;
@@ -195,7 +303,7 @@ async function handleCommand(
         await sendMessage(
           env.BOT_TOKEN,
           chatId,
-          `${name}, there is no transaction to edit in this chat. Reply to one or use /edit on your latest item.`,
+          `${name}, bu chatda o'zgartirish uchun tranzaksiya yo'q. Biror xabarga javob bering yoki oxirgi elementga /edit ishlating.`,
           replyTo,
         );
         return;
@@ -211,13 +319,13 @@ async function handleCommand(
       await sendMessage(
         env.BOT_TOKEN,
         chatId,
-        `✏️ Updated: ${formatAmount(replacement.amount, replacement.currency)} ${replacement.currency} (${replacement.note})`,
+        `✏️ Yangilandi: ${formatAmount(replacement.amount, replacement.currency)} ${replacement.currency} (${replacement.note})`,
         replyTo,
       );
       return;
     }
   } catch (error) {
     console.error("handleCommand failed", command, error);
-    await sendMessage(env.BOT_TOKEN, chatId, "⚠️ Something went wrong. Please try again.", replyTo);
+    await sendMessage(env.BOT_TOKEN, chatId, "⚠️ Noma'lum xatolik yuz berdi. Qayta urinib ko'ring.", replyTo);
   }
 }
