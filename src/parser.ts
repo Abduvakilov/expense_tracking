@@ -13,7 +13,7 @@ const CATEGORY_TAG_RE = /(?:^|\s)#([a-z][a-z'-]*)/i;
 const EXPENSE_CATEGORY_RULES: Array<[TransactionCategory, RegExp]> = [
   ["food", /\b(?:kartoshka|sabzi|piyoz|banan|ovqat|oziqovqat|mahsulot|bozor|dokon|oshxona|osh|taom|non|nonushta|tushlik|kechki ovqat|buyurtma|yetkazib berish|gosht|baliq|tovuq|meva|sabzavot|shakar|qand|yogurt|sut|qatiq|kefir|tuz|murch|baqlajon|pomidor|bodring|guruch|makaron|moy|un|choy|qahva|shirinlik|muzqaymoq|somsa|manti|lagmon|shorva|kabob|lavash|pizza|kolbasa|suv|ichimlik|gazlangan|mineral)\b/i],
   ["transport", /\b(?:taksi|taxi|avtobus|metro|poyezd|poezd|mashina|avtomobil|avto|yol haqi|yol kira|benzin|yoqilgi|gaz|moy|shina|ehtiyot qism|tamirlash|haydovchi|bekat|bilet|samolyot|transport)\b/i],
-  ["housing", /\b(?:ijara|uy|xonadon|kvartira|hovli|yotoqxona|uyjoy|bino|xona|qurilish|tamirlash|boyoq|mebel|jihoz|kommunal|elektr|elektr toki|suv|gaz|issiqlik|isitish|sovutish|internet|wifi)\b/i],
+  ["housing", /\b(?:ijara|uy|xonadon|kvartira|hovli|yotoqxona|uyjoy|bino|xona|qurilish|tamirlash|boyoq|mebel|jihoz|matras|konditsioner|kommunal|elektr|elektr toki|suv|gaz|issiqlik|isitish|sovutish|internet|wifi)\b/i],
   ["health", /\b(?:shifoxona|poliklinika|klinika|doktor|shifokor|dori|doridarmon|dorixona|vitamin|tahlil|analiz|davolanish|muolaja|salomatlik|sogliq|tish|tish shifokori|tez yordam|jarrohlik|korik)\b/i],
   ["education", /\b(?:kurs|oquv kursi|maktab|universitet|oliygoh|kollej|talim|dars|oqish|oqituvchi|ustoz|kitob|daftar|qalam|imtihon|kontrakt|stipendiya|maktab formasi)\b/i],
   ["entertainment", /\b(?:kino|film|teatr|konsert|musiqa|qoshiq|park|sayr|dam olish|sport|futbol|tennis|oyin|oyinkulgi|tadbir|tomosha|muzey|basseyn|zal)\b/i],
@@ -101,6 +101,10 @@ export async function parseOfdReceiptLinks(text: string): Promise<ParsedTransact
 }
 
 export function parseTransactionInput(text: string): ParsedTransaction | null {
+  if (/(?:https?:\/\/)?(?:new-)?ofd\.soliq\.uz\/check/i.test(text)) {
+    return null;
+  }
+
   const raw = normalizeInput(text).trim().replace(/[`]/g, "").replace(/[ *_~]/g, " ");
   if (!raw) return null;
 

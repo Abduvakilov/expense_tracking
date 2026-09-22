@@ -112,6 +112,11 @@ describe("parseTransactionInput", () => {
     expect(parseTransactionInput("hello everyone")).toBeNull();
   });
 
+  it("ignores OFD receipt URLs so the query id does not become an expense", () => {
+    expect(parseTransactionInput("https://ofd.soliq.uz/check?t=VG298430011007&r=5522&c=20220105200244&s=931351329501")).toBeNull();
+    expect(parseTransactionInputs("https://ofd.soliq.uz/check?t=VG298430011007&r=5522&c=20220105200244&s=931351329501")).toEqual([]);
+  });
+
   it("parses multiple newline-separated transactions", () => {
     expect(parseTransactionInputs("Taxi 25$\nKartoshka 15 000")).toEqual([
       { amount: -25, currency: "USD", note: "Taxi", type: "expense", category: "transport" },
