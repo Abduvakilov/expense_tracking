@@ -24,7 +24,7 @@ const EXPENSE_CATEGORY_RULES: Array<[TransactionCategory, RegExp]> = [
 ];
 
 const INCOME_CATEGORY_RULES: Array<[TransactionCategory, RegExp]> = [
-  ["salary", /\b(?:salary|maosh|ishhaq|oylik|paycheck|pension|stipendiya|daromad|ish|ish haqi|menejment|zarp|zarpata|qarz)\b/i],
+  ["work", /\b(?:salary|maosh|ishhaq|oylik|paycheck|pension|stipendiya|daromad|ish|ish haqi|menejment|zarp|zarpata|qarz)\b/i],
 ];
 
 export function hasFinancialIntent(text: string): boolean {
@@ -159,8 +159,8 @@ function detectExplicitCategory(text: string): TransactionCategory | null {
     gifts: "gifts",
     sovga: "gifts",
     travel: "travel",
-    salary: "salary",
-    maosh: "salary",
+    salary: "work",
+    maosh: "work",
     other: "other",
     boshqa: "other",
   };

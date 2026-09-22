@@ -47,7 +47,7 @@ npm run dev
 | Message | Result |
 | --- | --- |
 | `Kartoshka 3kg 15 000` | −15000 UZS, note Kartoshka 3kg, category food |
-| `Doniyor kirim 2 000 000` | +2000000 UZS, note Doniyor, category salary when the message mentions salary |
+| `Doniyor kirim 2 000 000` | +2000000 UZS, note Doniyor, category work when the message mentions salary |
 | `Taxi 25$` | −25 USD, category transport |
 | `1 000 eur` | −1000 EUR, note Expense, category other |
 | `/balance` | Per-user + group totals by currency |
@@ -55,4 +55,4 @@ npm run dev
 | `/undo` | Deletes your latest row in this chat |
 | `/start` `/help` | Examples and rules |
 
-Chat without numbers is ignored. Words like `kirim` with no amount get a warning instead of spam. Categories are inferred from common keywords such as food, transport, bills, shopping, travel, or salary.
+Chat without numbers is ignored. Words like `kirim` with no amount get a warning instead of spam. Categories are inferred from common keywords such as food, transport, bills, shopping, travel, or work.

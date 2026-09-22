@@ -10,7 +10,7 @@ export type TransactionCategory =
   | "bills"
   | "gifts"
   | "travel"
-  | "salary"
+  | "work"
   | "other";
 
 export interface Env {

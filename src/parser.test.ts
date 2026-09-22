@@ -36,14 +36,14 @@ describe("parseTransactionInput", () => {
       currency: "UZS",
       note: "salary",
       type: "income",
-      category: "salary",
+      category: "work",
     });
     expect(parseTransactionInput("Salary kirim 2 000")).toEqual({
       amount: 2000,
       currency: "UZS",
       note: "Salary",
       type: "income",
-      category: "salary",
+      category: "work",
     });
   });
 
@@ -53,7 +53,7 @@ describe("parseTransactionInput", () => {
       currency: "UZS",
       note: "salary",
       type: "income",
-      category: "salary",
+      category: "work",
     });
   });
 
@@ -63,7 +63,7 @@ describe("parseTransactionInput", () => {
       currency: "UZS",
       note: "salary",
       type: "income",
-      category: "salary",
+      category: "work",
     });
   });
 
@@ -103,7 +103,7 @@ describe("parseTransactionInput", () => {
       currency: "UZS",
       note: "salary",
       type: "income",
-      category: "salary",
+      category: "work",
     });
   });
 
@@ -126,8 +126,8 @@ describe("parseTransactionInput", () => {
 
   it("parses note lines followed by amount lines as repeated transactions", () => {
     expect(parseTransactionInputs("Salary kirim\n1000000\n500$")).toEqual([
-      { amount: 1000000, currency: "UZS", note: "Salary", type: "income", category: "salary" },
-      { amount: 500, currency: "USD", note: "Salary", type: "income", category: "salary" },
+      { amount: 1000000, currency: "UZS", note: "Salary", type: "income", category: "work" },
+      { amount: 500, currency: "USD", note: "Salary", type: "income", category: "work" },
     ]);
   });
 

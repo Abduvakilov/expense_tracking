@@ -46,7 +46,7 @@ function translateCategory(category: TransactionCategory): string {
     gifts: "sovgalar",
     travel: "sayohat",
     shopping: "xaridlar",
-    salary: "maosh",
+    work: "ish",
     other: "boshqa",
   };
   return map[category] ?? category;
@@ -74,7 +74,7 @@ Kategoriyalar:
 #gifts — sovgalar
 #travel — sayohat
 #shopping — xaridlar
-#salary — maosh
+#work — ish
 #other — boshqa
 
 Valyutalar alohida yuritiladi — konvertatsiya qilinmaydi:
