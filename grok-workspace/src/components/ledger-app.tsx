@@ -10,6 +10,7 @@ import { MonthChart } from "@/components/month-chart";
 import { SettingsPanel } from "@/components/settings-panel";
 import { TransactionList } from "@/components/transaction-list";
 import { TxEditor } from "@/components/tx-editor";
+import { TelegramAuthGate } from "@/components/telegram-auth-gate";
 import { Button } from "@/components/ui/button";
 import { bootstrapLedger, refreshLedger, shiftMonth, useLedgerStore } from "@/lib/store";
 import { flushSyncQueue, readSyncQueue } from "@/lib/sync";
@@ -35,7 +36,7 @@ function exportCsv() {
   toast("Exported CSV");
 }
 
-export function LedgerApp() {
+function LedgerContent() {
   const isSample = useLedgerStore((s) => s.isSample);
   const month = useLedgerStore((s) => s.month);
   const setMonth = useLedgerStore((s) => s.setMonth);
@@ -157,5 +158,13 @@ export function LedgerApp() {
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
+  );
+}
+
+export function LedgerApp() {
+  return (
+    <TelegramAuthGate>
+      {() => <LedgerContent />}
+    </TelegramAuthGate>
   );
 }

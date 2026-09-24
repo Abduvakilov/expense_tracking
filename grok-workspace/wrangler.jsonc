@@ -1,0 +1,6 @@
+{
+  "name": "hisob-app",
+  "compatibility_date": "2026-09-24",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry"
+}

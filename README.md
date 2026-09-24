@@ -40,6 +40,28 @@ npm test
 npm run dev
 ```
 
+## Web app authentication
+
+The companion web app is deployed separately at
+`https://hisob-app.abd-dilshod.workers.dev`. It requires Telegram Login
+before any ledger request is allowed, and each request is scoped to the
+authenticated Telegram user.
+
+Configure the same bot token used by the Telegram Worker as a secret on the
+app Worker, set the public bot username during the build, and register the
+app hostname with BotFather for the Telegram Login Widget:
+
+```powershell
+cd grok-workspace
+npx wrangler secret put TELEGRAM_BOT_TOKEN
+$env:VITE_TELEGRAM_BOT_USERNAME = "<bot-username>"
+npm run deploy
+```
+
+Run `/setdomain` in BotFather with `hisob-app.abd-dilshod.workers.dev` before
+testing the login button. Do not put the bot token in `VITE_` variables or
+commit it to the repository.
+
 `POST /` is the Telegram webhook and always returns `{ "status": "ok" }` so Telegram does not retry. Replies are sent with `fetch` to `https://api.telegram.org/bot<token>/sendMessage`.
 
 ## Usage

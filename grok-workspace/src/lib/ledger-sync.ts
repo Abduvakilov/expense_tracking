@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getSql } from "./db";
-import { authMiddleware } from "./auth/middleware";
+import { telegramAuthMiddleware } from "./telegram-auth";
 import type { Currency, TxType } from "./types";
 
 export type LedgerSyncItem = {
@@ -15,7 +15,7 @@ export type LedgerSyncItem = {
 };
 
 export const syncLedgerTransactions = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
+  .middleware([telegramAuthMiddleware])
   .validator((input: { transactions: LedgerSyncItem[] }) => input)
   .handler(async ({ data, context }): Promise<{ synced: number }> => {
     const { transactions } = data;
@@ -27,7 +27,7 @@ export const syncLedgerTransactions = createServerFn({ method: "POST" })
     for (const row of transactions) {
       await sql`
         insert into ledger_transactions (id, owner_id, person_id, note, amount, currency, type, category, created_at)
-        values (${row.id}, ${context.userId}, ${row.personId}, ${row.note}, ${row.amount}, ${row.currency}, ${row.type}, ${row.category}, ${row.createdAt})
+        values (${row.id}, ${context.telegramUser.id}, ${row.personId}, ${row.note}, ${row.amount}, ${row.currency}, ${row.type}, ${row.category}, ${row.createdAt})
         on conflict (id) do update set
           person_id = excluded.person_id,
           note = excluded.note,
@@ -44,7 +44,7 @@ export const syncLedgerTransactions = createServerFn({ method: "POST" })
   });
 
 export const listLedgerTransactions = createServerFn({ method: "GET" })
-  .middleware([authMiddleware])
+  .middleware([telegramAuthMiddleware])
   .handler(async ({ context }): Promise<LedgerSyncItem[]> => {
     const sql = await getSql();
     const rows = await sql<{
@@ -59,7 +59,7 @@ export const listLedgerTransactions = createServerFn({ method: "GET" })
     }>`
       select id, person_id, note, amount, currency, type, category, created_at
       from ledger_transactions
-      where owner_id = ${context.userId}
+      where owner_id = ${context.telegramUser.id}
       order by created_at desc
     `;
 
