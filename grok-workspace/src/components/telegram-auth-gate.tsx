@@ -33,7 +33,7 @@ export function TelegramAuthGate({ children }: { children: (user: TelegramUser) 
   }, []);
 
   useEffect(() => {
-    if (user || !botUsername) return;
+    if (pending || user || !botUsername) return;
     const container = document.getElementById("telegram-login-widget");
     if (!container) return;
     window.onTelegramAuth = (payload) => {
@@ -57,7 +57,7 @@ export function TelegramAuthGate({ children }: { children: (user: TelegramUser) 
       delete window.onTelegramAuth;
       container.replaceChildren();
     };
-  }, [botUsername, user]);
+  }, [botUsername, pending, user]);
 
   if (pending) {
     return <main className="grid min-h-dvh place-items-center p-6 text-muted-foreground">Checking Telegram session…</main>;

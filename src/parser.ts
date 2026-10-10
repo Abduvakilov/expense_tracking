@@ -1,9 +1,9 @@
-import type { Currency, ParsedTransaction, TransactionCategory } from "./types";
+﻿import type { Currency, ParsedTransaction, TransactionCategory } from "./types";
 
 const OFD_URL_RE = /(?:https?:\/\/)?(?:new-)?ofd\.soliq\.uz\/check(?:\?[^\s]*)?/gi;
 const KEYWORD_RE = /\b(?:kirim|chiqim|jami)\b/gi;
 const CURRENCY_TOKEN_RE =
-  /\$|€|\b(?:usd|eur|soum|som)\b|(?<=\d)s\b|\bs\b/gi;
+  /\$|â‚¬|\b(?:usd|eur|soum|som)\b|(?<=\d)s\b|\bs\b/gi;
 
 /** Standalone numbers, including space/dot thousand groups. Not 3kg. */
 const STANDALONE_NUMBER_RE =
@@ -11,20 +11,18 @@ const STANDALONE_NUMBER_RE =
 const CATEGORY_TAG_RE = /(?:^|\s)#([a-z][a-z'-]*)/i;
 
 const EXPENSE_CATEGORY_RULES: Array<[TransactionCategory, RegExp]> = [
-  ["food", /\b(?:kartoshka|sabzi|piyoz|banan|ovqat|oziqovqat|mahsulot|bozor|dokon|oshxona|osh|taom|non|nonushta|tushlik|kechki ovqat|buyurtma|yetkazib berish|gosht|baliq|tovuq|meva|sabzavot|shakar|qand|yogurt|sut|qatiq|kefir|tuz|murch|baqlajon|pomidor|bodring|guruch|makaron|moy|un|choy|qahva|shirinlik|muzqaymoq|somsa|manti|lagmon|shorva|kabob|lavash|pizza|kolbasa|suv|ichimlik|gazlangan|mineral)\b/i],
-  ["transport", /\b(?:taksi|taxi|avtobus|metro|poyezd|poezd|mashina|avtomobil|avto|yol haqi|yol kira|benzin|yoqilgi|gaz|moy|shina|ehtiyot qism|tamirlash|haydovchi|bekat|bilet|samolyot|transport)\b/i],
-  ["housing", /\b(?:ijara|uy|xonadon|kvartira|hovli|yotoqxona|uyjoy|bino|xona|qurilish|tamirlash|boyoq|mebel|jihoz|matras|konditsioner|kommunal|elektr|elektr toki|suv|gaz|issiqlik|isitish|sovutish|internet|wifi)\b/i],
-  ["health", /\b(?:shifoxona|poliklinika|klinika|doktor|shifokor|dori|doridarmon|dorixona|vitamin|tahlil|analiz|davolanish|muolaja|salomatlik|sogliq|tish|tish shifokori|tez yordam|jarrohlik|korik)\b/i],
-  ["education", /\b(?:kurs|oquv kursi|maktab|universitet|oliygoh|kollej|talim|dars|oqish|oqituvchi|ustoz|kitob|daftar|qalam|imtihon|kontrakt|stipendiya|maktab formasi)\b/i],
-  ["entertainment", /\b(?:kino|film|teatr|konsert|musiqa|qoshiq|park|sayr|dam olish|sport|futbol|tennis|oyin|oyinkulgi|tadbir|tomosha|muzey|basseyn|zal)\b/i],
-  ["bills", /\b(?:tolov|hisob|qarz|komissiya|kommunal|elektr|suv|gaz|internet|wifi|telefon|mobil aloqa|sim karta|tarif|abonent tolovi|jarima|soliq|chek)\b/i],
-  ["gifts", /\b(?:sovga|hadya|tugilgan kun|toy|nikoh|bayram|mehmon|mehmondorchilik|duo|marosim|chaqaloq|tabrik)\b/i],
-  ["travel", /\b(?:safar|sayohat|mehmonxona|yotoq|aviachipta|samolyot|poyezd|yol|tur|dam olish maskani|viza|pasport|bagaj|bilet)\b/i],
-  ["shopping", /\b(?:xarid|sotib olish|olish|dokon|bozor|kiyim|ustbosh|poyabzal|koylak|shim|kurtka|palto|romol|sumka|soat|telefon|kompyuter|noutbuk|quloqchin|elektronika|aksessuar|oyinchoq|idish|uyrozgor)\b/i],
-];
-
-const INCOME_CATEGORY_RULES: Array<[TransactionCategory, RegExp]> = [
-  ["work", /\b(?:salary|maosh|ishhaq|oylik|paycheck|pension|stipendiya|daromad|ish|ish haqi|menejment|zarp|zarpata|qarz)\b/i],
+  ["food", /\b(?:kartoshka|sabzi|piyoz|banan|ovqat|oziqovqat|oziq ovqat|mahsulot|bozor|dokon|oshxona|osh|taom|non|nonushta|tushlik|kechki ovqat|buyurtma|yetkazib berish|gosht|baliq|tovuq|meva|sabzavot|shakar|qand|yogurt|sut|qatiq|kefir|tuz|murch|baqlajon|pomidor|bodring|guruch|makaron|moy|un|choy|qahva|shirinlik|muzqaymoq|somsa|manti|lagmon|shorva|kabob|lavash|pizza|kolbasa|suv|ichimlik|gazlangan|mineral|olma|nok|uzum|ziravor|qovun|tarvuz|mayonez|margarin|tuxum|go'sht|saryog|sosiska|bulochka|chips|gamburger|karam|qora murch|chesnok|ukrop|qalampir|bodring|ovqatlanish|milk|somsa|pizza|suv va ovqat)\b/i],
+  ["transport", /\b(?:taksi|taxi|avtobus|metro|poyezd|poezd|mashina|avtomobil|avto|yol haqi|yol kira|benzin|yoqilgi|gaz|moy|shina|ehtiyot qism|tamirlash|haydovchi|bekat|bilet|samolyot|transport|benzin|yol|avtomobil)\b/i],
+  ["housing", /\b(?:ijara|uy|xonadon|kvartira|hovli|yotoqxona|uyjoy|bino|xona|qurilish|tamirlash|boyoq|mebel|jihoz|matras|konditsioner|kommunal|elektr|elektr toki|suv|gaz|issiqlik|isitish|sovutish|internet|wifi|moyka|yuvish|laminat|kafel|plastik|qop|gvozd|idish|stakan|santexnika|bo'yoq|oboi|reshotka|batareya|konstruktsiya|arqon|uyga harajat|uyga|suv va boshqa|qop)\b/i],
+  ["health", /\b(?:shifoxona|poliklinika|klinika|doktor|shifokor|dori|doridarmon|dorixona|vitamin|tahlil|analiz|davolanish|muolaja|salomatlik|sogliq|tish|tish shifokori|tez yordam|jarrohlik|korik|profilaktika|ko'z|koz|maftuna|medik|zard|mukamala|eye|doctor|doktor kunlik|doktori)\b/i],
+  ["education", /\b(?:kurs|oquv kursi|maktab|universitet|oliygoh|kollej|talim|dars|oqish|oqituvchi|ustoz|kitob|daftar|qalam|imtihon|kontrakt|stipendiya|maktab formasi|bogcha|bolalar bogchasi|bolalar|bogcha kostyum|school)\b/i],
+  ["entertainment", /\b(?:kino|film|teatr|konsert|musiqa|qoshiq|park|sayr|dam olish|sport|futbol|tennis|oyin|oyinkulgi|tadbir|tomosha|muzey|basseyn|zal|atraksion|atraksionlar|choyxona|cafe|uchrashuv|safar)\b/i],
+  ["bills", /\b(?:tolov|hisob|qarz|komissiya|kommunal|elektr|suv|gaz|internet|wifi|telefon|mobil aloqa|sim karta|tarif|abonent tolovi|jarima|soliq|chek|hisob|pul uzatish|bank|check|nalog|tax|ruxsatnoma|pasport|zags|yurist|yuridik)\b/i],
+  ["gifts", /\b(?:sovga|hadya|tugilgan kun|toy|nikoh|bayram|mehmon|mehmondorchilik|duo|marosim|chaqaloq|tabrik|gul|buket|guldor|flower|flowers|atirgul|lily|gul va ovqat)\b/i],
+  ["travel", /\b(?:safar|sayohat|mehmonxona|yotoq|aviachipta|samolyot|poyezd|yol|tur|dam olish maskani|viza|pasport|bagaj|bilet|uchrashuv|posilka|xitoydan posilka|travel|posilka uchun|xitoydan)\b/i],
+  ["shopping", /\b(?:xarid|sotib olish|olish|dokon|bozor|kiyim|ustbosh|poyabzal|koylak|shim|kurtka|palto|romol|sumka|soat|telefon|kompyuter|noutbuk|quloqchin|elektronika|aksessuar|oyinchoq|idish|uyrozgor|mato|ro'mol|o'yinchoq|chiroy|tushum|tushumlar|saryog|sosiska|batareya|plastik karta|qop|plastik|sumka|mato|kiyim|oyinchoq)\b/i],
+];const INCOME_CATEGORY_RULES: Array<[TransactionCategory, RegExp]> = [
+  ["work", /\b(?:salary|maosh|ishhaq|oylik|paycheck|pension|stipendiya|daromad|ish|ish haqi|menejment|zarpata|qarz)\b/i],
 ];
 
 export function hasFinancialIntent(text: string): boolean {
@@ -32,7 +30,7 @@ export function hasFinancialIntent(text: string): boolean {
   if (!t) return false;
   if (t.startsWith("+")) return true;
   if (/\b(?:kirim|chiqim|jami)\b/i.test(t)) return true;
-  if (/[€$]/.test(t)) return true;
+  if (/[â‚¬$]/.test(t)) return true;
   if (/\b(?:usd|eur|soum|som)\b/i.test(t)) return true;
   return false;
 }
@@ -289,7 +287,7 @@ function transliterateCyrillic(char: string): string {
     Ш: "Sh", ш: "sh", Ы: "Y", ы: "y", Ь: "", ь: "",
     Э: "E", э: "e", Ю: "Yu", ю: "yu", Я: "Ya", я: "ya",
     Ў: "O'", ў: "o'", Қ: "Q", қ: "q", Ғ: "G'", ғ: "g'",
-    Ҳ: "H", ҳ: "h", 
+    Ҳ: "H", ҳ: "h",
   };
 
   return map[char] ?? char;
@@ -328,7 +326,7 @@ function normalizeCategoryText(text: string): string {
       character === " "
     ) {
       normalized += character;
-    } else if ("'-’ʻʼ`ʽʾˈˊˋ˴＇‐‑‒–—―".includes(character)) {
+    } else if ("'-â€™Ê»Ê¼`Ê½Ê¾ËˆËŠË‹Ë´ï¼‡â€â€‘â€’â€“â€”â€•".includes(character)) {
       continue;
     } else {
       normalized += " ";
@@ -369,3 +367,6 @@ function extractNote(
   if (!note) return isIncome ? "Income" : "Expense";
   return note;
 }
+
+
+

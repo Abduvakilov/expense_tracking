@@ -1,7 +1,7 @@
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
 
 /** Which database backend is active. */
-export type DbSource = "neon" | "pglite";
+export type DbSource = "d1" | "neon" | "pglite";
 
 // An empty/whitespace DATABASE_URL (an easy misconfig in deploy UIs) must mean
 // "unset" — otherwise production would silently run on the PGLite fallback.
@@ -68,6 +68,27 @@ const OID_INTERVAL = 1186;
 const identity = (v: string) => v;
 
 type Run = <T>(text: string, params: unknown[]) => Promise<T[]>;
+
+export async function cloudflareDatabase(): Promise<import("cloudflare:workers").D1Database | undefined> {
+  try {
+    const cloudflare = await import("cloudflare:workers");
+    return cloudflare.env.DB;
+  } catch {
+    return undefined;
+  }
+}
+
+function createD1Sql(db: import("cloudflare:workers").D1Database): Sql {
+  return toSql(async <T>(text: string, params: unknown[]) => {
+    const statement = db.prepare(text).bind(...params);
+    if (/^\s*(select|with|pragma)\b/i.test(text)) {
+      const result = await statement.all<T>();
+      return result.results;
+    }
+    await statement.run();
+    return [];
+  });
+}
 
 /** Wrap a query runner in the tagged-template + `.query()` `Sql` surface. */
 function toSql(run: Run): Sql {
@@ -176,6 +197,8 @@ async function createSql(): Promise<Sql> {
         "or a server route loader, never from client code.",
     );
   }
+  const d1 = await cloudflareDatabase();
+  if (d1) return createD1Sql(d1);
   return dbSource === "neon" ? createNeonSql() : createPgliteSql();
 }
 

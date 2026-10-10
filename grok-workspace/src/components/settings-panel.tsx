@@ -28,7 +28,6 @@ export function SettingsPanel({
   const removePerson = useLedgerStore((s) => s.removePerson);
   const setBudget = useLedgerStore((s) => s.setBudget);
   const startFresh = useLedgerStore((s) => s.startFresh);
-  const restoreSample = useLedgerStore((s) => s.restoreSample);
   const [newName, setNewName] = useState("");
 
   return (
@@ -37,7 +36,7 @@ export function SettingsPanel({
         <SheetHeader>
           <SheetTitle>Household</SheetTitle>
           <SheetDescription>
-            People, monthly budgets, and the sample ledger.
+            People and monthly budgets for your ledger.
           </SheetDescription>
         </SheetHeader>
         <div className="space-y-8">
@@ -117,30 +116,18 @@ export function SettingsPanel({
               Data
             </h3>
             <p className="text-xs text-muted-foreground">
-              Everything stays on this device. Clearing the sample starts a blank household.
+              Your transactions are synced to your authenticated account.
             </p>
-            <div className="flex flex-col gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  startFresh();
-                  onClose();
-                  toast("Blank ledger");
-                }}
-              >
-                Start fresh
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  restoreSample();
-                  onClose();
-                  toast("Sample household restored");
-                }}
-              >
-                Restore sample
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              onClick={() => {
+                startFresh();
+                onClose();
+                toast("Blank ledger");
+              }}
+            >
+              Start fresh
+            </Button>
           </section>
         </div>
       </SheetContent>

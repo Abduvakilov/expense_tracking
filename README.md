@@ -45,7 +45,9 @@ npm run dev
 The companion web app is deployed separately at
 `https://hisob-app.abd-dilshod.workers.dev`. It requires Telegram Login
 before any ledger request is allowed, and each request is scoped to the
-authenticated Telegram user.
+authenticated Telegram user. The app uses the same durable Cloudflare D1
+database as the bot; its ledger rows are stored in the
+`ledger_transactions` table and are not kept in Worker memory.
 
 Configure the same bot token used by the Telegram Worker as a secret on the
 app Worker, set the public bot username during the build, and register the
@@ -61,6 +63,16 @@ npm run deploy
 Run `/setdomain` in BotFather with `hisob-app.abd-dilshod.workers.dev` before
 testing the login button. Do not put the bot token in `VITE_` variables or
 commit it to the repository.
+
+When deploying database changes, apply the root D1 migrations before deploying
+the app Worker:
+
+```powershell
+cd ..
+npx wrangler d1 migrations apply expense-tracking --remote
+cd grok-workspace
+npm run deploy
+```
 
 `POST /` is the Telegram webhook and always returns `{ "status": "ok" }` so Telegram does not retry. Replies are sent with `fetch` to `https://api.telegram.org/bot<token>/sendMessage`.
 

@@ -2,5 +2,12 @@
   "name": "hisob-app",
   "compatibility_date": "2026-09-24",
   "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "expense-tracking",
+      "database_id": "45d61869-25a9-41b7-9867-f181b5e4bfc1"
+    }
+  ],
   "main": "@tanstack/react-start/server-entry"
 }

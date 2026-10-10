@@ -189,6 +189,29 @@ describe("parseTransactionInput", () => {
     });
   });
 
+  it("matches lower-frequency household, health, and family keywords", () => {
+    expect(parseTransactionInput("Moyka 20 000")).toMatchObject({
+      amount: -20000,
+      category: "housing",
+      note: "Moyka",
+    });
+    expect(parseTransactionInput("Bog'cha 350 000")).toMatchObject({
+      amount: -350000,
+      category: "education",
+      note: "Bog'cha",
+    });
+    expect(parseTransactionInput("Maftuna ko'z profilaktika 120 000")).toMatchObject({
+      amount: -120000,
+      category: "health",
+      note: "Maftuna ko'z profilaktika",
+    });
+    expect(parseTransactionInput("Oyinchoq 30 000")).toMatchObject({
+      amount: -30000,
+      category: "shopping",
+      note: "Oyinchoq",
+    });
+  });
+
   it("normalizes punctuation out of hashtags before matching categories", () => {
     expect(parseTransactionInput("Ta'lim kursi 250 000 #talim")).toMatchObject({
       amount: -250000,

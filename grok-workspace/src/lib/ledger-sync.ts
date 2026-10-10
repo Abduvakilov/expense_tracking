@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getSql } from "./db";
+import { cloudflareDatabase, getSql } from "./db";
 import { telegramAuthMiddleware } from "./telegram-auth";
 import type { Currency, TxType } from "./types";
 
@@ -63,7 +63,7 @@ export const listLedgerTransactions = createServerFn({ method: "GET" })
       order by created_at desc
     `;
 
-    return rows.map((row) => ({
+    const appRows = rows.map((row) => ({
       id: row.id,
       personId: row.person_id,
       note: row.note,
@@ -73,4 +73,43 @@ export const listLedgerTransactions = createServerFn({ method: "GET" })
       category: row.category,
       createdAt: new Date(row.created_at).toISOString(),
     }));
+
+    const d1 = await cloudflareDatabase();
+    if (!d1) return appRows;
+
+    const botRows = await d1
+      .prepare(
+        `SELECT id, telegram_user_id, telegram_user, amount, currency, note, category, created_at
+         FROM transactions
+         WHERE chat_id IN (
+           SELECT chat_id FROM users WHERE telegram_user_id = ?
+         )
+         ORDER BY created_at DESC, id DESC`,
+      )
+      .bind(Number(context.telegramUser.id))
+      .all<{
+        id: number;
+        telegram_user_id: number;
+        telegram_user: string;
+        amount: number;
+        currency: Currency;
+        note: string;
+        category: string;
+        created_at: string;
+      }>();
+
+    const sharedRows = (botRows.results ?? []).map((row) => ({
+      id: `bot-${row.id}`,
+      personId: String(row.telegram_user_id),
+      note: row.note || row.telegram_user,
+      amount: Number(row.amount),
+      currency: row.currency,
+      type: Number(row.amount) >= 0 ? ("income" as const) : ("expense" as const),
+      category: row.category,
+      createdAt: new Date(row.created_at).toISOString(),
+    }));
+
+    return [...appRows, ...sharedRows].sort(
+      (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+    );
   });

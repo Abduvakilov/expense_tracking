@@ -1,5 +1,6 @@
 {
   "VITE_AUTH_ENABLED": "true",
+  "VITE_TELEGRAM_BOT_USERNAME": "Expenseandreceiptbot",
   "deploy": {
     "database": false
   }

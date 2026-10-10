@@ -245,19 +245,12 @@ export const useLedgerStore = create<LedgerState>()(
   ),
 );
 
-function ensureLedgerReady(): void {
-  const state = useLedgerStore.getState();
-  if (state.isSample && state.transactions.length === 0) {
-    useLedgerStore.setState({ transactions: buildSampleLedger() });
-  }
-}
-
 function normalizeRemoteCategory(category: string): CategoryId {
   const legacy: Record<string, CategoryId> = {
     groceries: "food",
     dining: "food",
     utilities: "bills",
-    work: "other",
+    work: "work",
     entertainment: "entertainment",
     income: "work",
     salary: "work",
@@ -292,11 +285,21 @@ export function bootstrapLedger(): Promise<void> {
   if (!bootstrapPromise) {
     bootstrapPromise = (async () => {
       await useLedgerStore.persist.rehydrate();
+      const state = useLedgerStore.getState();
+      if (state.isSample) {
+        useLedgerStore.setState({
+          isSample: false,
+          people: [{ id: "you", name: "You" }],
+          activePersonId: "you",
+          transactions: [],
+          budgets: [],
+          undoStack: [],
+        });
+      }
       try {
         await refreshLedger();
       } catch (error) {
-        console.warn("Could not load shared ledger; keeping local data.", error);
-        ensureLedgerReady();
+        console.error("Could not load shared ledger.", error);
       }
     })();
   }
